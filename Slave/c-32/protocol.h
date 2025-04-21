@@ -90,6 +90,7 @@
  
  tProtocolStatus commInit(volatile tCommunication *pComm, uint32_t **ptrLUT,
 		 uint8_t *sizeLUT, uint8_t parameter_list_length);
+ tProtocolStatus commInterruptRoutine(tCommunication *pComm, uint32_t data_size);
  tProtocolStatus processReceived(volatile tCommunication *pComm);
  tProtocolStatus generateTransmitPackage(volatile tCommunication *pComm);
  tProtocolStatus generateCustomTransmitPackage(volatile tCommunication *pComm,
