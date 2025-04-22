@@ -11,6 +11,5 @@
 tDevice Device = {0};
 
 void initDevice(tDevice* device){
-    device->comm.cb = &cb;
      // flash parameters pointers
 }

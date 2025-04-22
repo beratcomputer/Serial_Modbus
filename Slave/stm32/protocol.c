@@ -26,6 +26,7 @@ tProtocolStatus commInit(volatile tCommunication *pComm, uint32_t **ptrLUT,
 	pComm->ptrLUT = ptrLUT;
 	pComm->sizeLUT = sizeLUT;
 	pComm->parameter_size = parameter_list_length;
+	pComm->cb = &cb;
 	return ProtocolTrue;
 }
 

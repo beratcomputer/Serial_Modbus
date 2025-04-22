@@ -1,15 +1,15 @@
 from library.serial_devices import *
 
 
-port_name = "COM3"
+port_name = "COM5"
 baudrate = 115200
-#port = SerialPort(port_name)
-water_system = Device(0, port_name, True)
+port = SerialPort(port_name, baudrate)
+water_system = Device(0, port, False)
 
 
 while True:
     print(water_system.ping())
-    time.sleep(1)
+    time.sleep(5)
 
 
 
