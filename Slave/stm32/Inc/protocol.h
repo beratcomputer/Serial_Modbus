@@ -8,9 +8,11 @@
  #ifndef INC_PROTOCOL_H_BAK_
  #define INC_PROTOCOL_H_BAK_
  
+ #include "comm_config.h"
  #include "align.h"
  #include "string.h"
  #include "circular_buffer.h"
+ #include "stm32f4xx_ll_dma.h"
  
  // Header, ID, Device Family, PackageSize, Command, Status, [...DATA...], CRC
  
@@ -19,7 +21,7 @@
  #define HEADER            			(0x55)
  #define DEVICE_FAMILY				(0xBA)
  #define CONSTANT_REG_SIZE 			(10) // Header, ID, Device Family, PackageSize, Command, Status, CRC
- #define MAX_VAR_COUNT              	(56) /*Number of variables in the protocol structure*/
+ #define MAX_VAR_COUNT              	(10) /*Number of variables in the protocol structure*/
  #define MAX_PACKAGE_SIZE  			(1024) /*FIXME : calculate correct number */
  #define DATA(X) 					(CONSTANT_REG_SIZE + X - 4)
  
@@ -90,8 +92,10 @@
  
  tProtocolStatus commInit(volatile tCommunication *pComm, uint32_t **ptrLUT,
 		 uint8_t *sizeLUT, uint8_t parameter_list_length);
- tProtocolStatus commInterruptRoutine(tCommunication *pComm, uint32_t data_size);
+ tProtocolStatus comm_IDLE_InterruptRoutine(tCommunication *pComm);
+ tProtocolStatus comm_TC_InterruptRoutine(tCommunication *pComm);
  tProtocolStatus processReceived(volatile tCommunication *pComm);
+ tProtocolStatus processTransmit(volatile tCommunication *pComm);
  tProtocolStatus generateTransmitPackage(volatile tCommunication *pComm);
  tProtocolStatus generateCustomTransmitPackage(volatile tCommunication *pComm,
 		 uint8_t *pData, uint8_t size);

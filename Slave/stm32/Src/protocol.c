@@ -30,19 +30,27 @@ tProtocolStatus commInit(volatile tCommunication *pComm, uint32_t **ptrLUT,
 	return ProtocolTrue;
 }
 
-tProtocolStatus commInterruptRoutine(tCommunication* pComm, uint32_t data_size){
-	pComm->cb->writePos = pComm->cb->size - data_size;
+tProtocolStatus comm_IDLE_InterruptRoutine(tCommunication *pComm) {
+	pComm->cb->writePos = pComm->cb->size - LL_DMA_GetDataLength(COMM_DMA_RX, COMM_DMA_RX_STREAM);
 	pComm->receiveAvailable = ProtocolTrue;
 	return ProtocolTrue;
+}
+tProtocolStatus comm_TC_InterruptRoutine(tCommunication *pComm){
+	LL_DMA_DisableStream(COMM_DMA_TX, COMM_DMA_TX_STREAM);
+#ifdef RS485
+	/*RS485 Transceiver enabled as receive only.*/
+	HAL_GPIO_WritePin(RX_EN_GPIO_Port, RX_EN_Pin, 0);
+	HAL_GPIO_WritePin(TX_EN_GPIO_Port, TX_EN_Pin, 0);
+#endif
 }
 
 tProtocolStatus processReceived(volatile tCommunication *pComm) {
 	if (patternFinder(pComm) == ProtocolTrue) {
 
 		peekCircularBuffer((tCircularBuffer*) (pComm->cb),
-				(uint8_t*) (pComm->ptrLUT[iPackageSize_protocol]), iPackageSize_protocol);
-		if (*(pComm->ptrLUT[iPackageSize_protocol])
-				> bufferLength((tCircularBuffer*) (pComm->cb))) {
+				(uint8_t*) (pComm->ptrLUT[iPackageSize_protocol]),
+				iPackageSize_protocol);
+		if (*(pComm->ptrLUT[iPackageSize_protocol]) > bufferLength((tCircularBuffer*) (pComm->cb))) {
 			return (ProtocolInvalid);
 		}
 	} else {
@@ -77,11 +85,29 @@ tProtocolStatus processReceived(volatile tCommunication *pComm) {
 	return ProtocolFalse;
 }
 
+tProtocolStatus processTransmit(volatile tCommunication *pComm) {
+	tProtocolStatus status = ProtocolFalse;
+	status = generateTransmitPackage(pComm);
+	if (status == ProtocolTrue) {
+		#ifdef RS485	/*RS485 Transceiver enabled as transmit only.*/
+		HAL_GPIO_WritePin(RX_EN_GPIO_Port, RX_EN_Pin, 1);
+		HAL_GPIO_WritePin(TX_EN_GPIO_Port, TX_EN_Pin, 1);
+		#endif
+		LL_DMA_DisableStream(COMM_DMA_TX, COMM_DMA_TX_STREAM);
+		LL_DMA_SetDataLength(COMM_DMA_TX, COMM_DMA_TX_STREAM, (uint32_t) pComm->txBuffer[iPackageSize_protocol]);
+		LL_DMA_EnableStream(COMM_DMA_TX, COMM_DMA_TX_STREAM);
+	}
+	else {
+		pComm->transmitAvailable = ProtocolFalse;
+	}
+}
+
 tProtocolStatus generateTransmitPackage(volatile tCommunication *pComm) {
 	uint8_t generatedSize = CONSTANT_REG_SIZE - 4;  //Substract CRC size
 
-//Pre-populate constants
-	for (tProtocolParametersIndex i = iHeader_protocol; i <= iStatus_protocol; i++) {
+	//Pre-populate constants
+	for (tProtocolParametersIndex i = iHeader_protocol; i <= iStatus_protocol;
+			i++) {
 		pComm->txBuffer[i] = *(uint8_t*) pComm->ptrLUT[i];
 	}
 
@@ -130,7 +156,8 @@ tProtocolStatus generateCustomTransmitPackage(volatile tCommunication *pComm,
 
 	uint8_t generatedSize = CONSTANT_REG_SIZE + size - 4;
 
-	for (tProtocolParametersIndex i = iHeader_protocol; i <= iStatus_protocol; i++) {
+	for (tProtocolParametersIndex i = iHeader_protocol; i <= iStatus_protocol;
+			i++) {
 		pComm->txBuffer[i] = *(uint8_t*) pComm->ptrLUT[i];
 	}
 
@@ -162,10 +189,12 @@ static inline tProtocolStatus patternFinder(volatile tCommunication *pComm) {
 			if (tempArr[0] == pComm->header) {
 				if (peekCircularBuffer((tCircularBuffer*) pComm->cb,
 						&(tempArr[1]), iDeviceID_protocol) == BufferTrue) {
-					if ((tempArr[1] == *(uint8_t*) (pComm->ptrLUT[iDeviceID_protocol]))
+					if ((tempArr[1]
+							== *(uint8_t*) (pComm->ptrLUT[iDeviceID_protocol]))
 							|| (tempArr[1] == BATCH_ID)) {
 						if (peekCircularBuffer((tCircularBuffer*) pComm->cb,
-								&(tempArr[2]), iDeviceFamily_protocol) == BufferTrue) {
+								&(tempArr[2]), iDeviceFamily_protocol)
+								== BufferTrue) {
 							if (tempArr[2] == pComm->deviceFamily) {
 								return (ProtocolTrue);
 							} else {
@@ -198,7 +227,8 @@ static inline tProtocolStatus parseReceivedReg(volatile tCommunication *pComm) {
 	for (uint8_t i = 0; i < pComm->packageSize - CONSTANT_REG_SIZE; i++) {
 		//Check if received index is valid
 		uint8_t varIndex = pComm->rxBuffer[DATA(i)];
-		if ((varIndex >= iWritableStart_protocol) || (varIndex == iDeviceID_protocol)) {
+		if ((varIndex >= iWritableStart_protocol)
+				|| (varIndex == iDeviceID_protocol)) {
 			memcpy(pComm->ptrLUT[varIndex],
 					(uint8_t*) pComm->rxBuffer + DATA(i + 1),
 					pComm->sizeLUT[varIndex]);
