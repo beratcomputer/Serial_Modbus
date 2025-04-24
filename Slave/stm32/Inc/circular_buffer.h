@@ -40,3 +40,4 @@ tBufferStatus writeCircularBufferBlock(tCircularBuffer *cb, uint8_t *data,
 		uint32_t len);
 
 #endif /* CIRCULARBUFFER_H_ */
+
