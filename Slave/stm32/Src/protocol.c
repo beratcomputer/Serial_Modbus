@@ -27,20 +27,52 @@ tProtocolStatus commInit(volatile tCommunication *pComm, uint32_t **ptrLUT,
 	pComm->sizeLUT = sizeLUT;
 	pComm->parameter_size = parameter_list_length;
 	pComm->cb = &cb;
+
+	LL_DMA_DisableIT_TC(DMA2, LL_DMA_STREAM_7);
+
+	/* USART 1 TX DMA Config */
+	LL_DMA_ConfigAddresses(COMM_DMA_TX, COMM_DMA_TX_STREAM,
+			(uint32_t) pComm->txBuffer, (uint32_t) &(USART->DR),
+			LL_DMA_GetDataTransferDirection(COMM_DMA_TX, COMM_DMA_TX_STREAM));
+
+	/* USART 1 RX DMA Config */
+	LL_DMA_ConfigAddresses(COMM_DMA_RX, COMM_DMA_RX_STREAM,
+			LL_USART_DMA_GetRegAddr(USART), (uint32_t) (pComm->cb->Buffer),
+			LL_DMA_GetDataTransferDirection(COMM_DMA_RX, COMM_DMA_RX_STREAM));
+	LL_DMA_SetDataLength(COMM_DMA_RX, COMM_DMA_RX_STREAM, pComm->cb->size);
+	LL_DMA_EnableStream(COMM_DMA_RX, COMM_DMA_RX_STREAM);
+
+	LL_USART_DisableIT_ERROR(USART);
+	LL_USART_EnableIT_IDLE(USART);
+	LL_USART_EnableIT_TC(USART);
+
+	/* Enable DMA Requests on USART1 RX */
+	LL_USART_EnableDMAReq_RX(USART);
+	/* Enable DMA Requests on USART1 TX */
+	LL_USART_EnableDMAReq_TX(USART);
+
+#ifdef RS485
+	/*RS485 Transceiver enabled as receive only.*/
+	HAL_GPIO_WritePin(RX_EN_GPIO_Port, RX_EN_Pin, 0);
+	HAL_GPIO_WritePin(TX_EN_GPIO_Port, TX_EN_Pin, 1);
+#endif
+
 	return ProtocolTrue;
 }
 
 tProtocolStatus comm_IDLE_InterruptRoutine(tCommunication *pComm) {
-	pComm->cb->writePos = pComm->cb->size - LL_DMA_GetDataLength(COMM_DMA_RX, COMM_DMA_RX_STREAM);
+	pComm->cb->writePos = pComm->cb->size
+			- LL_DMA_GetDataLength(COMM_DMA_RX, COMM_DMA_RX_STREAM);
 	pComm->receiveAvailable = ProtocolTrue;
 	return ProtocolTrue;
 }
-tProtocolStatus comm_TC_InterruptRoutine(tCommunication *pComm){
+tProtocolStatus comm_TC_InterruptRoutine(tCommunication *pComm) {
+	LL_DMA_ClearFlag_TC7(DMA2);
 	LL_DMA_DisableStream(COMM_DMA_TX, COMM_DMA_TX_STREAM);
 #ifdef RS485
 	/*RS485 Transceiver enabled as receive only.*/
 	HAL_GPIO_WritePin(RX_EN_GPIO_Port, RX_EN_Pin, 0);
-	HAL_GPIO_WritePin(TX_EN_GPIO_Port, TX_EN_Pin, 0);
+	HAL_GPIO_WritePin(TX_EN_GPIO_Port, TX_EN_Pin, 1);
 #endif
 }
 
@@ -50,7 +82,8 @@ tProtocolStatus processReceived(volatile tCommunication *pComm) {
 		peekCircularBuffer((tCircularBuffer*) (pComm->cb),
 				(uint8_t*) (pComm->ptrLUT[iPackageSize_protocol]),
 				iPackageSize_protocol);
-		if (*(pComm->ptrLUT[iPackageSize_protocol]) > bufferLength((tCircularBuffer*) (pComm->cb))) {
+		if (*(pComm->ptrLUT[iPackageSize_protocol])
+				> bufferLength((tCircularBuffer*) (pComm->cb))) {
 			return (ProtocolInvalid);
 		}
 	} else {
@@ -65,6 +98,7 @@ tProtocolStatus processReceived(volatile tCommunication *pComm) {
 			return ProtocolFalse;
 		}
 	} else {
+		pComm->cb->readPos = pComm->cb->writePos; //TODO circular_buffer function for package size error.
 		return ProtocolInvalid;
 	}
 
@@ -89,15 +123,14 @@ tProtocolStatus processTransmit(volatile tCommunication *pComm) {
 	tProtocolStatus status = ProtocolFalse;
 	status = generateTransmitPackage(pComm);
 	if (status == ProtocolTrue) {
-		#ifdef RS485	/*RS485 Transceiver enabled as transmit only.*/
-		HAL_GPIO_WritePin(RX_EN_GPIO_Port, RX_EN_Pin, 1);
+#ifdef RS485	/*RS485 Transceiver enabled as transmit only.*/
 		HAL_GPIO_WritePin(TX_EN_GPIO_Port, TX_EN_Pin, 1);
-		#endif
+#endif
 		LL_DMA_DisableStream(COMM_DMA_TX, COMM_DMA_TX_STREAM);
-		LL_DMA_SetDataLength(COMM_DMA_TX, COMM_DMA_TX_STREAM, (uint32_t) pComm->txBuffer[iPackageSize_protocol]);
+		LL_DMA_SetDataLength(COMM_DMA_TX, COMM_DMA_TX_STREAM,
+				(uint32_t) pComm->txBuffer[iPackageSize_protocol]);
 		LL_DMA_EnableStream(COMM_DMA_TX, COMM_DMA_TX_STREAM);
-	}
-	else {
+	} else {
 		pComm->transmitAvailable = ProtocolFalse;
 	}
 }

@@ -8,22 +8,22 @@
  #include "circular_buffer.h"
 
  #include "string.h"
-
+ 
  //#warning "Buffer size must be a power of two"
 
  volatile uint8_t uart_rx_buffer[COMM_BUFFER_LENGTH] = { 0xFF };
-
+ 
  tCircularBuffer cb = {
          .Buffer = (uint8_t*) uart_rx_buffer,
          .readPos = 0,
          .writePos = 0,
          .size = COMM_BUFFER_LENGTH };
-
-
+ 
+ 
  inline uint32_t getRealPos(tCircularBuffer* cb, uint32_t pos) {
    return ((pos) & (cb->size - 1));
  }
-
+ 
  tBufferStatus readCircularBuffer(tCircularBuffer* cb, uint8_t* data) {
    if (bufferLength(cb) == 0) {
      return BufferEmpty;
@@ -32,7 +32,7 @@
    cb->readPos = ((cb->readPos + 1) & (cb->size - 1));
    return BufferTrue;
  }
-
+ 
  tBufferStatus writeCircularBuffer(tCircularBuffer* cb, uint8_t data) {
    if (bufferLength(cb) == (cb->size - 1)) {
      return BufferFull;
@@ -41,18 +41,18 @@
    cb->writePos = (cb->writePos + 1) & (cb->size - 1);  // must be atomic
    return BufferTrue;
  }
-
+ 
  uint32_t bufferLength(tCircularBuffer* cb) {
    return ((cb->writePos - cb->readPos) & (cb->size - 1));
  }
-
+ 
  tCircularBuffer initBuffer(uint32_t size) {
    tCircularBuffer cb;
    cb.size = size;
    cb.Buffer = (uint8_t*)malloc(sizeof(uint8_t) * cb.size);
    return cb;
  }
-
+ 
  tBufferStatus peekCircularBuffer(tCircularBuffer* cb, uint8_t* data,
                                   uint32_t offset) {
    if (bufferLength(cb) <= offset) {
@@ -61,7 +61,7 @@
    *data = cb->Buffer[getRealPos(cb, cb->readPos + offset)];
    return BufferTrue;
  }
-
+ 
  tBufferStatus readCircularBufferBlock(tCircularBuffer* cb, uint8_t* data,
                                        uint32_t len) {
    if (bufferLength(cb) < len) {
@@ -77,7 +77,7 @@
    cb->readPos = ((cb->readPos + len) & (cb->size - 1));
    return BufferTrue;
  }
-
+ 
  tBufferStatus writeCircularBufferBlock(tCircularBuffer* cb, uint8_t* data,
                                         uint32_t len) {
    if (cb->size - bufferLength(cb) < len) {
@@ -93,6 +93,6 @@
    cb->writePos = ((cb->writePos + len) & (cb->size - 1));
    return BufferTrue;
  }
-
+ 
  void destroyBuffer(tCircularBuffer* cb) { free(cb->Buffer); }
-
+ 

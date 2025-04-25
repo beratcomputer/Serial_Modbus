@@ -13,6 +13,7 @@
  #include "string.h"
  #include "circular_buffer.h"
  #include "stm32f4xx_ll_dma.h"
+ #include "stm32f4xx_ll_usart.h"
  
  // Header, ID, Device Family, PackageSize, Command, Status, [...DATA...], CRC
  

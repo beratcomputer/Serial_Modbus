@@ -118,7 +118,7 @@ class Embedded_Device():
 
     def ping(self):
         fmt_str = '<BBBBBB'
-        struct_out = list(struct.pack(fmt_str, *[self._header, self._id, self._device_family, 8, Device_Commands.PING, 0]))
+        struct_out = list(struct.pack(fmt_str, *[self._header, self._id, self._device_family, 10, Device_Commands.PING, 0]))
         struct_out = bytes(struct_out) + struct.pack('<I', CRC32.calc(struct_out))
         self._ack_size = 10
         #burayi kontrol et.
