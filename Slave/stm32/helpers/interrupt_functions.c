@@ -9,29 +9,31 @@
 #include "cmsis_os2.h"
 
 // STM32F4XX UART interrupt function
-void USART1_IRQHandler(void)
-{
-  /* USER CODE BEGIN USART1_IRQn 0 */
+void USART1_IRQHandler(void) {
+	/* USER CODE BEGIN USART1_IRQn 0 */
 	extern osThreadId_t CommTaskHandle;
-	if(LL_USART_IsActiveFlag_IDLE(USART1) && LL_USART_IsEnabledIT_IDLE(USART1)){
-		osThreadFlagsSet(CommTaskHandle, RX_AVAIL_FLAG);
-		commInterruptRoutine((tCommunication*)&Device.comm, LL_DMA_GetDataLength(DMA2, LL_DMA_STREAM_2));
+
+	if (LL_USART_IsActiveFlag_IDLE(USART1)
+			&& LL_USART_IsEnabledIT_IDLE(USART1)) {
+		comm_IDLE_InterruptRoutine((tCommunication*) &Device.comm);
 		LL_USART_ClearFlag_IDLE(USART1);
+		osThreadFlagsSet(CommTaskHandle, RX_AVAIL_FLAG);
 	}
 
-	if (LL_USART_IsActiveFlag_ORE(USART1)){
+	if (LL_USART_IsActiveFlag_ORE(USART1)) {
 		LL_USART_ClearFlag_ORE(USART1);
 	}
 
-	if (LL_USART_IsActiveFlag_TC(USART1)){
+	if (LL_USART_IsActiveFlag_TC(USART1)) {
+		comm_TC_InterruptRoutine((tCommunication*) &Device.comm);
 		LL_USART_ClearFlag_TC(USART1);
 	}
 
-  /* USER CODE END USART1_IRQn 0 */
-  HAL_UART_IRQHandler(&huart1);
-  /* USER CODE BEGIN USART1_IRQn 1 */
+	/* USER CODE END USART1_IRQn 0 */
+	HAL_UART_IRQHandler(&huart1);
+	/* USER CODE BEGIN USART1_IRQn 1 */
 
-  /* USER CODE END USART1_IRQn 1 */
+	/* USER CODE END USART1_IRQn 1 */
 }
 
 ////////////////////////////////////////////////////////////////////////////
