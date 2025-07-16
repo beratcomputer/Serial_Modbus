@@ -6,9 +6,6 @@ import time
 import serial
 from library.Devices import *
 
-SERIAL_HEADER = 0x55
-DEVICE_FAMILY = 0xBA
-
 
 # enter here for extra commands: 
 #class Device_ExtraCommands(enum.IntEnum):
@@ -32,28 +29,40 @@ Index_Device = enum.IntEnum('Index', [
 
 
 class Device(Embedded_Device):
+	DEVICE_FAMILY = 0x01
+
 	def __init__(self, ID, port:SerialPort, _test = False) -> bool:
 		
 		self.__ack_size = 0
 		if ID > 255 or ID < 0:
 			raise ValueError("Device ID can not be higher than 253 or lower than 0!")
 		device_special_data = [
-            Data_(Index_Device.Header, 'B', False, 0x55),
-            Data_(Index_Device.DeviceID, 'B'),
+			Data_(Index_Device.Header, 'B', False, 0x55),
+			Data_(Index_Device.DeviceID, 'B'),
 			Data_(Index_Device.DeviceFamily, 'B'),
-            Data_(Index_Device.PackageSize, 'B'),
-            Data_(Index_Device.Command, 'B'),
+			Data_(Index_Device.PackageSize, 'B'),
+			Data_(Index_Device.Command, 'B'),
 			Data_(Index_Device.Status, 'B'),
-            Data_(Index_Device.HardwareVersion, 'I'),
-            Data_(Index_Device.SoftwareVersion, 'I'),
-            Data_(Index_Device.Baudrate, 'I'),
+			Data_(Index_Device.HardwareVersion, 'I'),
+			Data_(Index_Device.SoftwareVersion, 'I'),
+			Data_(Index_Device.Baudrate, 'I'),
 			# user parameter starts
 
 			# user parameter end			
-            Data_(Index_Device.CRCValue, 'I'),
-        ]
-		super().__init__(SERIAL_HEADER, ID, DEVICE_FAMILY, device_special_data, port, _test)
+			Data_(Index_Device.CRCValue, 'I'),
+		]
+		super().__init__(ID, DEVICE_FAMILY, device_special_data, port)
 		self._vars[Index_Device.DeviceID].value(ID)
 
 	# user start for extra commands.
 	#def command(self): 
+
+
+def scan_Devices(port:SerialPort):
+    id_list = []
+    for i in range(255):
+        print(i)
+        dev = Device(i, port)
+        if dev.ping()== True:
+            id_list.append(i)
+    return id_list
