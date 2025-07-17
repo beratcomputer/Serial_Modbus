@@ -6,10 +6,8 @@ import time
 import serial
 from library.Devices import *
 
-
 # enter here for extra commands: 
 #class Device_ExtraCommands(enum.IntEnum):
-
 
 Index_Device = enum.IntEnum('Index', [
 	'Header',
@@ -31,7 +29,7 @@ Index_Device = enum.IntEnum('Index', [
 class Device(Embedded_Device):
 	DEVICE_FAMILY = 0x01
 
-	def __init__(self, ID, port:SerialPort, _test = False) -> bool:
+	def __init__(self, ID, port:SerialPort) -> bool:
 		
 		self.__ack_size = 0
 		if ID > 255 or ID < 0:
@@ -51,18 +49,19 @@ class Device(Embedded_Device):
 			# user parameter end			
 			Data_(Index_Device.CRCValue, 'I'),
 		]
-		super().__init__(ID, DEVICE_FAMILY, device_special_data, port)
+		super().__init__(ID, self.DEVICE_FAMILY, device_special_data, port)
 		self._vars[Index_Device.DeviceID].value(ID)
 
 	# user start for extra commands.
 	#def command(self): 
 
+def scan_XXXX_devices(port:SerialPort):
+	device = Device(0, port)
+	available_devices = []
 
-def scan_Devices(port:SerialPort):
-    id_list = []
-    for i in range(255):
-        print(i)
-        dev = Device(i, port)
-        if dev.ping()== True:
-            id_list.append(i)
-    return id_list
+	for id in range(0,255):
+		device._id = id
+		if(device.ping()):
+			available_devices.append(id)
+
+	return available_devices
